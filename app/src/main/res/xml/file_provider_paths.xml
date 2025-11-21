@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ✅ SOLUSI: Gunakan <paths> sebagai tag root, bukan <PreferenceScreen> -->
+<paths>
+    <!--
+      Jalur ini menunjuk ke direktori Pictures yang spesifik untuk aplikasi Anda
+      di penyimpanan eksternal. Aplikasi lain dapat mengakses file di sini
+      jika Anda memberikan URI melalui FileProvider.
+    -->
+    <external-path
+        name="photos"
+        path="Android/data/com.example.lab_week_11_b/files/Pictures" />
+
+    <!--
+      Jalur ini menunjuk ke direktori Movies yang spesifik untuk aplikasi Anda
+      di penyimpanan eksternal.
+    -->
+    <external-path
+        name="videos"
+        path="Android/data/com.example.lab_week_11_b/files/Movies" />
+</paths>
