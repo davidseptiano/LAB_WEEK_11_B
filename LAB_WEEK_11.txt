@@ -1,0 +1,39 @@
+Saat pengguna mengambil gambar menggunakan kamera, sistem Android menyimpan file gambar tersebut ke lokasi yang ditentukan oleh URI yang kita berikan saat memanggil intent kamera. Bagian kode yang bertanggung jawab untuk membuat file dan menghasilkan URI ini ada di dalam kelas ProviderFileManager.kt, khususnya pada fungsi generatePhotoUri.Fungsi inilah yang mempersiapkan lokasi penyimpanan sebelum kamera dibuka.
+fun generatePhotoUri(time: Long): FileInfo {
+// Generate the data model (FileInfo) for the file
+// The data model contains the URI, file, name, relative path, and MIME type of the file
+val name = "img_$time.jpg"
+// Get the file object
+// The file will be stored in the folder defined in file_provider_paths.xml
+val file = File(
+context.getExternalFilesDir(fileHelper.getPicturesFolder()),
+name
+)
+return FileInfo(
+fileHelper.getUriFromFile(file),
+file,
+name,
+fileHelper.getPicturesFolder(),
+"image/jpeg"
+)
+}
+Dalam data class FileInfo, kedua atribut ini merujuk pada dua hal yang berbeda namun saling terkait:
+uri (Atribut Pertama): Atribut ini menyimpan content:// URI yang dihasilkan oleh FileProvider. Ini bukan path file langsung, melainkan sebuah alamat aman dan sementara yang digunakan untuk memberikan akses ke file tersebut kepada aplikasi lain (dalam hal ini, aplikasi kamera). FileProvider bertindak sebagai perantara yang menyembunyikan path file sebenarnya dan memberikan izin akses terbatas pada URI ini. URI inilah yang diberikan kepada intent kamera sebagai tujuan penyimpanan.
+relativePath (Atribut Keempat): Atribut ini menyimpan nama sub-direktori tempat file akan disimpan di dalam MediaStore. Berdasarkan kode, nilainya adalah hasil dari fileHelper.getPicturesFolder(), yang kemungkinan besar adalah Environment.DIRECTORY_PICTURES ("Pictures"). Path ini digunakan saat menyalin file dari lokasi sementara ke MediaStore agar gambar tersebut muncul di galeri dalam album yang sesuai (misalnya, album "Pictures").
+Berikut adalah urutan kejadiannya secara kronologis:
+ 	1. Pengguna Menekan Tombol "Photo": Di MainActivity, onClickListener untuk tombol foto dipicu.
+ 	2.Membuat Lokasi Penyimpanan Sementara: MainActivity memanggil providerFileManager.generatePhotoUri(). Fungsi ini:
+ 		• Membuat nama file unik (misalnya, img_1678886400000.jpg).
+ 		• Membuat objek File yang menunjuk ke lokasi penyimpanan internal aplikasi (di dalam Android/data/com.example.lab_week_11_b/files/Pictures/).
+ 		• Menggunakan FileProvider untuk menghasilkan content:// URI yang aman untuk file tersebut.
+ 		• Mengembalikan objek FileInfo yang berisi content:// URI dan detail file lainnya.
+ 	3.Membuka Kamera: MainActivity menerima FileInfo dan meluncurkan intent kamera menggunakan takePictureLauncher.launch(photoInfo.uri). content:// URI dari langkah sebelumnya 		  diteruskan sebagai tujuan output, memberitahu aplikasi kamera di mana harus menyimpan gambar yang diambil.
+ 	4.Pengguna Mengambil Gambar: Pengguna mengambil foto. Aplikasi kamera menyimpan data gambar ke lokasi yang ditunjuk oleh content:// URI.
+ 	5.Menerima Hasil dari Kamera: Setelah gambar disimpan, registerForActivityResult di MainActivity menerima hasilnya. Callback-nya kemudian dieksekusi.
+ 	6.Menyalin ke MediaStore: Di dalam callback registerForActivityResult, fungsi providerFileManager.insertImageToStore(photoInfo) dipanggil. Fungsi ini:
+ 		• Memanggil insertToStore secara internal.
+ 		• Fungsi insertToStore berjalan di background thread (menggunakan Executor).
+ 		• Ia membuat entri baru di MediaStore (galeri publik perangkat) menggunakan ContentResolver.insert(). Ini akan menghasilkan content:// URI baru yang menunjuk ke lokasi di 		galeri.
+ 		• Kemudian, ia membuka InputStream dari URI file sementara (langkah 2) dan OutputStream ke URI MediaStore yang baru (langkah 6c).
+ 		• Menggunakan IOUtils.copy(), konten file gambar disalin dari penyimpanan internal aplikasi ke penyimpanan publik MediaStore.
+Hasil Akhir: Gambar sekarang ada di dua tempat: satu di direktori internal aplikasi (yang tidak terlihat oleh pengguna) dan satu salinan di galeri MediaStore (yang bisa dilihat oleh pengguna melalui aplikasi galeri).
